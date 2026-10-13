@@ -1,0 +1,13 @@
+.git
+.github
+backend/
+basedatos/
+docs/
+herramientas/
+pruebas/
+public_html/node_modules
+public_html/tests
+public_html/.env
+public_html/storage/*.key
+docker/my.crt
+docker/my.key
