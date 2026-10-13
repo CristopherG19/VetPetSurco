@@ -1,19 +1,22 @@
 #!/bin/sh
 set -e
 
-# Configurar Apache para escuchar en el puerto asignado por Railway ($PORT), en el 8080 y en el 80
+# Configurar ServerName para evitar advertencias de Apache
+grep -q "ServerName localhost" /etc/apache2/apache2.conf 2>/dev/null || echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
+# Configurar puertos de Apache: escuchar en 80 y en el puerto dinámico de Railway sin duplicados
 APP_PORT="${PORT:-8080}"
 
-echo "ServerName localhost" >> /etc/apache2/apache2.conf 2>/dev/null || true
-
-cat <<EOF > /etc/apache2/ports.conf
-Listen 80
-Listen 8080
-Listen $APP_PORT
-EOF
+if [ "$APP_PORT" = "80" ]; then
+    printf "Listen 80\n" > /etc/apache2/ports.conf
+    VHOST_PORTS="*:80"
+else
+    printf "Listen 80\nListen %s\n" "$APP_PORT" > /etc/apache2/ports.conf
+    VHOST_PORTS="*:80 *:$APP_PORT"
+fi
 
 cat <<EOF > /etc/apache2/sites-available/000-default.conf
-<VirtualHost *:80 *:8080 *:$APP_PORT>
+<VirtualHost $VHOST_PORTS>
     DocumentRoot /var/www/html/public
     <Directory /var/www/html/public>
         Options -Indexes +FollowSymLinks
@@ -30,7 +33,7 @@ a2dismod mpm_event 2>/dev/null || true
 a2dismod mpm_worker 2>/dev/null || true
 a2enmod mpm_prefork 2>/dev/null || true
 
-# Asegurar permisos de carpetas de escritura
+# Asegurar permisos de carpetas de almacenamiento y caché de Laravel
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache || true
 chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache || true
 
@@ -48,5 +51,5 @@ if [ -n "$APP_KEY" ]; then
     php artisan view:cache || true
 fi
 
-echo ">> Iniciando Apache en puertos 80, 8080 y $APP_PORT..."
+echo ">> Iniciando Apache en $VHOST_PORTS..."
 exec apache2-foreground
