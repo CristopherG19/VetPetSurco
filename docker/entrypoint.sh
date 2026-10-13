@@ -1,10 +1,29 @@
 #!/bin/sh
 set -e
 
-# Configurar el puerto dinámico de Railway en Apache antes de iniciar
-APP_PORT="${PORT:-80}"
-sed -i "s/Listen .*/Listen $APP_PORT/" /etc/apache2/ports.conf
-sed -i "s/<VirtualHost \*:.*>/<VirtualHost *:$APP_PORT>/" /etc/apache2/sites-available/000-default.conf
+# Configurar Apache para escuchar en el puerto asignado por Railway ($PORT), en el 8080 y en el 80
+APP_PORT="${PORT:-8080}"
+
+echo "ServerName localhost" >> /etc/apache2/apache2.conf 2>/dev/null || true
+
+cat <<EOF > /etc/apache2/ports.conf
+Listen 80
+Listen 8080
+Listen $APP_PORT
+EOF
+
+cat <<EOF > /etc/apache2/sites-available/000-default.conf
+<VirtualHost *:80 *:8080 *:$APP_PORT>
+    DocumentRoot /var/www/html/public
+    <Directory /var/www/html/public>
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+    ErrorLog \${APACHE_LOG_DIR}/error.log
+    CustomLog \${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+EOF
 
 # Solución para Railway: asegurar que solo mpm_prefork esté activo en Apache
 a2dismod mpm_event 2>/dev/null || true
@@ -29,5 +48,5 @@ if [ -n "$APP_KEY" ]; then
     php artisan view:cache || true
 fi
 
-echo ">> Iniciando Apache en el puerto $APP_PORT..."
+echo ">> Iniciando Apache en puertos 80, 8080 y $APP_PORT..."
 exec apache2-foreground
