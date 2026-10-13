@@ -30,6 +30,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Forzar HTTPS en producción o cuando viene detrás de proxy seguro (Railway)
+        if ($this->app->environment('production') || request()->header('x-forwarded-proto') === 'https') {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
         // El contador del carrito acompaña todas las pantallas de la plataforma,
         // para mostrarlo en el atajo del encabezado sin cargarlo en cada controlador.
         View::composer('layouts.app', static function ($view): void {

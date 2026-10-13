@@ -12,6 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Confiar en todos los proxys (Railway termina HTTPS antes de entrar al contenedor)
+        $middleware->trustProxies(at: '*');
+
         // Alias 'rol' para el guardia de acceso por rol (RN-01).
         $middleware->alias([
             'rol' => EnsureRol::class,
