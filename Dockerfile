@@ -16,8 +16,11 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-install pdo pdo_mysql mbstring zip bcmath opcache intl gd \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 2. Habilitar mod_rewrite de Apache
-RUN a2enmod rewrite
+# 2. Habilitar mod_rewrite y corregir módulos MPM de Apache para Railway
+RUN a2enmod rewrite \
+    && a2dismod mpm_event 2>/dev/null || true \
+    && a2dismod mpm_worker 2>/dev/null || true \
+    && a2enmod mpm_prefork 2>/dev/null || true
 
 # 3. Configurar Apache para Laravel (DocumentRoot en /var/www/html/public y AllowOverride All)
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
